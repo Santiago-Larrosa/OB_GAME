@@ -1,15 +1,20 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include <SDL2/SDL_mixer.h> 
+#include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 600
 #define SPRITE_WIDTH 250
+#define SPRITE_ATACK_WIDTH 500
+#define SPRITE_STAND_WIDTH 284
 #define SPRITE_HEIGHT 246
+#define SPRITE_ATACK_HEIGHT 252
+#define SPRITE_STAND_HEIGHT 252
 #define SPRITES_PER_IMAGE 4
+#define SPRITES_PER_IMAGE_ATACK 2
 #define PLATFORM_HEIGHT 20
-#define FRAME_TIME 150
+#define FRAME_TIME 100
 #define GRAVITY 0.01
 #define JUMP_FORCE -2
 #define PLATFORM_NUM  10
@@ -24,6 +29,9 @@ typedef struct {
     int prepareJumpFrame;
     int isMoving;
     int isOnGround;
+    int isStop;
+    int isAtacking;
+    int attackFrame;
 } Character;
 
 typedef struct {
@@ -43,13 +51,19 @@ int main(int argc, char* args[]) {
     SDL_Texture* spriteSheet1 = NULL;
     SDL_Texture* spriteSheet2 = NULL;
     SDL_Texture* jumpSpriteSheet = NULL;
-    SDL_Texture* fallingSpriteSheet = NULL; 
+    SDL_Texture* fallingSpriteSheet = NULL;
+    SDL_Texture* standingSpriteSheet = NULL;
+    SDL_Texture* AtackSpriteSheet1 = NULL;
+    SDL_Texture* AtackSpriteSheet2 = NULL;
+    SDL_Texture* AtackSpriteSheet3 = NULL;
     SDL_Texture* platformTexture = NULL;
     SDL_Rect spriteClips[SPRITES_PER_IMAGE * 4];
-    SDL_Rect platforms[PLATFORM_NUM]; 
-    Mix_Music *backgroundMusic = NULL; 
+    SDL_Rect standingClips[3];
+    SDL_Rect atackingClips[1];
+    SDL_Rect platforms[PLATFORM_NUM];
+    Mix_Music *backgroundMusic = NULL;
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) { 
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         printf("No se pudo inicializar SDL. SDL_Error: %s\n", SDL_GetError());
         return -1;
     }
@@ -59,7 +73,7 @@ int main(int argc, char* args[]) {
         return -1;
     }
 
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) { 
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
         printf("No se pudo inicializar SDL_mixer. Mix_Error: %s\n", Mix_GetError());
         return -1;
     }
@@ -68,24 +82,37 @@ int main(int argc, char* args[]) {
                               SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                               SCREEN_WIDTH, SCREEN_HEIGHT,
                               SDL_WINDOW_SHOWN);
-    
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-   
 
     spriteSheet1 = IMG_LoadTexture(renderer, "spritesheet1.bmp");
-   
-
     spriteSheet2 = IMG_LoadTexture(renderer, "spritesheet2.bmp");
-   
-
     jumpSpriteSheet = IMG_LoadTexture(renderer, "jump_spritesheet.bmp");
-   
-
-    fallingSpriteSheet = IMG_LoadTexture(renderer, "falling.bmp"); 
-  
-
+    fallingSpriteSheet = IMG_LoadTexture(renderer, "falling.bmp");
     platformTexture = IMG_LoadTexture(renderer, "platform.png");
+    standingSpriteSheet = IMG_LoadTexture(renderer, "standing.bmp");
+    AtackSpriteSheet1 = IMG_LoadTexture(renderer, "atack1.bmp");
+    AtackSpriteSheet2 = IMG_LoadTexture(renderer, "atack2.bmp");
+    AtackSpriteSheet3 = IMG_LoadTexture(renderer, "atack3.bmp");
+
+    for (int i = 0; i < SPRITES_PER_IMAGE_ATACK; ++i) {
+        atackingClips[i].x = i * SPRITE_ATACK_WIDTH;
+        atackingClips[i].y = 0;
+        atackingClips[i].w = SPRITE_ATACK_WIDTH;
+        atackingClips[i].h = SPRITE_ATACK_HEIGHT;
+    }
+    for (int i = 0; i < SPRITES_PER_IMAGE_ATACK; ++i) {
+        atackingClips[i + SPRITES_PER_IMAGE_ATACK].x = i * SPRITE_ATACK_WIDTH;
+        atackingClips[i + SPRITES_PER_IMAGE_ATACK].y = 0;
+        atackingClips[i + SPRITES_PER_IMAGE_ATACK].w = SPRITE_ATACK_WIDTH;
+        atackingClips[i + SPRITES_PER_IMAGE_ATACK].h = SPRITE_ATACK_HEIGHT;
+    }
+    for (int i = 0; i < SPRITES_PER_IMAGE_ATACK; ++i) {
+        atackingClips[i + 2 * SPRITES_PER_IMAGE_ATACK].x = i * SPRITE_ATACK_WIDTH;
+        atackingClips[i + 2 * SPRITES_PER_IMAGE_ATACK].y = 0;
+        atackingClips[i + 2 * SPRITES_PER_IMAGE_ATACK].w = SPRITE_ATACK_WIDTH;
+        atackingClips[i + 2 * SPRITES_PER_IMAGE_ATACK].h = SPRITE_ATACK_HEIGHT;
+    }
     
 
     for (int i = 0; i < SPRITES_PER_IMAGE; ++i) {
@@ -115,6 +142,14 @@ int main(int argc, char* args[]) {
         spriteClips[i + 3 * SPRITES_PER_IMAGE].w = SPRITE_WIDTH;
         spriteClips[i + 3 * SPRITES_PER_IMAGE].h = SPRITE_HEIGHT;
     }
+    for (int i = 0; i < 3; ++i) {
+        standingClips[i + 2].x = i * SPRITE_STAND_WIDTH;
+        standingClips[i + 2].y = 0;
+        standingClips[i + 2].w = SPRITE_STAND_WIDTH;
+        standingClips[i + 2].h = SPRITE_STAND_HEIGHT;
+    }
+
+   
 
     Character player;
     player.position.w = SPRITE_WIDTH / 3;
@@ -128,12 +163,14 @@ int main(int argc, char* args[]) {
     player.jumpFrame = 0;
     player.prepareJumpFrame = 0;
     player.isMoving = 0;
-    player.isOnGround = 1; 
+    player.isOnGround = 1;
+    player.isStop = 1;
+    player.isAtacking = 0;
+    player.attackFrame = 0;
 
-    Camera camera = {0-(SPRITE_WIDTH/6), 0};
+    Camera camera = {0 - (SPRITE_WIDTH / 6), 0};
 
-    
-    platforms[0] = (SDL_Rect){0, SCREEN_HEIGHT - PLATFORM_HEIGHT, SCREEN_WIDTH*10, PLATFORM_HEIGHT};
+    platforms[0] = (SDL_Rect){0, SCREEN_HEIGHT - PLATFORM_HEIGHT, SCREEN_WIDTH * 10, PLATFORM_HEIGHT};
     platforms[1] = (SDL_Rect){200, SCREEN_HEIGHT - 200, 300, PLATFORM_HEIGHT};
     platforms[2] = (SDL_Rect){500, SCREEN_HEIGHT - 300, 300, PLATFORM_HEIGHT};
     platforms[3] = (SDL_Rect){800, SCREEN_HEIGHT - 400, 300, PLATFORM_HEIGHT};
@@ -151,18 +188,19 @@ int main(int argc, char* args[]) {
     int isMoving = 0;
     int direction = 0;
 
-   
     backgroundMusic = Mix_LoadMUS("background_music.mp3");
     if (backgroundMusic == NULL) {
         printf("No se pudo cargar la música de fondo. Mix_Error: %s\n", Mix_GetError());
         return -1;
     }
 
-    // Reproducir la música de fondo en bucle
     if (Mix_PlayMusic(backgroundMusic, -1) == -1) {
         printf("No se pudo reproducir la música de fondo. Mix_Error: %s\n", Mix_GetError());
         return -1;
     }
+
+    Uint32 animationStartTime = SDL_GetTicks();
+    Uint32 animationFrameTime = 200; 
 
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
@@ -174,29 +212,38 @@ int main(int argc, char* args[]) {
                         if (!player.isPreparingToJump && !player.isJumping) {
                             direction = -1;
                             isMoving = 1;
+                            player.isAtacking = 0;
                         }
                         break;
                     case SDLK_RIGHT:
                         if (!player.isPreparingToJump && !player.isJumping) {
                             direction = 1;
                             isMoving = 1;
+                            player.isAtacking = 0;
                         }
                         break;
                     case SDLK_UP:
                         if (!player.isJumping && !player.isPreparingToJump) {
                             player.isPreparingToJump = 1;
                             player.prepareJumpFrame = 0;
+                            player.isAtacking = 0;
                         }
                         break;
                     case SDLK_r:
-                       player.position.y = 0;
-                       player.position.x = 0;
-                       player.isOnGround = 0;
-                       player.isJumping = 0;
-                       player.velocityY = -1;
+                        player.position.y = 0;
+                        player.position.x = 0;
+                        player.isOnGround = 0;
+                        player.isJumping = 1;
+                        player.velocityY = -1;
+                        player.isAtacking = 0;
+                        break;
+                    case SDLK_x:
+                    if (!player.isJumping &&  !player.isPreparingToJump  && direction == 0){
+                        player.isAtacking = 1;
+                        player.attackFrame = 0;}
                         break;
                 }
-                
+
             } else if (e.type == SDL_KEYUP) {
                 switch (e.key.keysym.sym) {
                     case SDLK_LEFT:
@@ -216,8 +263,21 @@ int main(int argc, char* args[]) {
             }
         }
 
-        int wasFalling = player.velocityY > 0;
-      
+        if (!isMoving && !player.isPreparingToJump && !player.isJumping) {
+            direction = 0;
+            player.isStop = 0;
+        } else {
+            player.isStop = 1;
+        }
+
+        if (player.isOnGround) {
+            if (direction == 0) {
+                player.isStop = 0;
+            } else {
+                player.isStop = 1;
+            }
+        }
+
         if (player.isJumping) {
             player.velocityY += GRAVITY;
             player.position.y += player.velocityY;
@@ -237,8 +297,7 @@ int main(int argc, char* args[]) {
                     break;
                 }
             }
-        } 
-        else if (!player.isOnGround) {
+        } else if (!player.isOnGround) {
             player.velocityY += GRAVITY;
             player.position.y += player.velocityY;
 
@@ -265,7 +324,7 @@ int main(int argc, char* args[]) {
             currentFrame = 0;
         }
 
-        // Verificación del borde de la plataforma
+       
         if (player.isOnGround) {
             int onPlatform = 0;
             for (int i = 0; i < PLATFORM_NUM; ++i) {
@@ -276,7 +335,6 @@ int main(int argc, char* args[]) {
             }
             if (!onPlatform) {
                 player.isOnGround = 0;
-                
                 player.velocityY = GRAVITY;
             }
         }
@@ -300,30 +358,49 @@ int main(int argc, char* args[]) {
 
         SDL_Texture* currentSpriteSheet;
         SDL_Rect* currentClip;
+        Uint32 currentTime = SDL_GetTicks();
 
-        if (player.isJumping) {
-            if (player.velocityY > 0) { 
+        if (player.isAtacking) {
+                renderPlayerRect.w = 500 / 3;
+                renderPlayerRect.h = 252 / 3;
+            currentSpriteSheet = (player.attackFrame < 2) ? AtackSpriteSheet1 : (player.attackFrame < 4) ? AtackSpriteSheet2 : AtackSpriteSheet3;
+            currentClip = &atackingClips[player.attackFrame % SPRITES_PER_IMAGE_ATACK];
+            if (currentTime - startTime > FRAME_TIME) {
+                player.attackFrame++;
+                if (player.attackFrame >= 6) {
+                    player.attackFrame = 0;
+                    player.isAtacking = 0;
+                }
+                startTime = currentTime;
+            }
+        } else if (player.isJumping) {
+            if (player.velocityY > 0) {
                 currentSpriteSheet = fallingSpriteSheet;
-                renderPlayerRect.w = 504 / 6; 
-                renderPlayerRect.h = 495 / 6; 
-                currentClip = NULL; 
+                renderPlayerRect.w = 504 / 6;
+                renderPlayerRect.h = 495 / 6;
+                currentClip = NULL;
             } else {
                 currentSpriteSheet = jumpSpriteSheet;
-                renderPlayerRect.w = SPRITE_WIDTH / 3; 
-                renderPlayerRect.h = SPRITE_HEIGHT / 3; 
+                renderPlayerRect.w = SPRITE_WIDTH / 3;
+                renderPlayerRect.h = SPRITE_HEIGHT / 3;
                 currentClip = &spriteClips[player.jumpFrame + 2 * SPRITES_PER_IMAGE];
             }
         } else if (player.isPreparingToJump) {
             currentSpriteSheet = jumpSpriteSheet;
-            renderPlayerRect.w = SPRITE_WIDTH / 3; 
-            renderPlayerRect.h = SPRITE_HEIGHT / 3; 
-            Uint32 currentTime = SDL_GetTicks();
+            renderPlayerRect.w = SPRITE_WIDTH / 3;
+            renderPlayerRect.h = SPRITE_HEIGHT / 3;
+
             if (currentTime - startTime > FRAME_TIME) {
-                player.prepareJumpFrame = (player.prepareJumpFrame + 1) % 2;  // Solo usar los primeros dos frames
+                player.prepareJumpFrame = (player.prepareJumpFrame + 1) % 2; 
                 startTime = currentTime;
             }
             currentClip = &spriteClips[player.prepareJumpFrame];
-        } else {
+        } else if (!player.isStop) {
+            currentSpriteSheet = standingSpriteSheet;
+            renderPlayerRect.w = SPRITE_WIDTH /3;
+            renderPlayerRect.h = SPRITE_HEIGHT /3;
+            currentClip = &standingClips[2];
+        } else if (player.isStop) {
             currentSpriteSheet = (currentFrame < SPRITES_PER_IMAGE) ? spriteSheet1 : spriteSheet2;
             currentClip = &spriteClips[currentFrame % SPRITES_PER_IMAGE];
         }
@@ -340,8 +417,9 @@ int main(int argc, char* args[]) {
     SDL_DestroyTexture(spriteSheet1);
     SDL_DestroyTexture(spriteSheet2);
     SDL_DestroyTexture(jumpSpriteSheet);
-    SDL_DestroyTexture(fallingSpriteSheet); 
+    SDL_DestroyTexture(fallingSpriteSheet);
     SDL_DestroyTexture(platformTexture);
+    SDL_DestroyTexture(standingSpriteSheet);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     Mix_Quit();
@@ -350,4 +428,3 @@ int main(int argc, char* args[]) {
 
     return 0;
 }
-//gcc -o game game.cpp -lSDL2 -lSDL2_image -lSDL2_mixer
