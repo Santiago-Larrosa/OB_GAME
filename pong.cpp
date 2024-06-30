@@ -75,7 +75,7 @@ int init(SDL_Renderer **renderer) {
 
     
 
-    int imgFlags = IMG_INIT_PNG;
+int imgFlags = IMG_INIT_PNG;
     if (!(IMG_Init(imgFlags) & imgFlags)) {
         printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
         return 0;
@@ -83,11 +83,7 @@ int init(SDL_Renderer **renderer) {
 
     return 1;
 }
-// Función para cargar una textura desde un archivo
 
-
-
-// Función para verificar si el clic del ratón está dentro de un rectángulo
 int isMouseInsideRect(int x, int y, SDL_Rect rect) {
     return (x > rect.x && x < rect.x + rect.w && y > rect.y && y < rect.y + rect.h);
 }
@@ -97,8 +93,7 @@ void savePlayerPosition(Character player) {
         fprintf(file, "%d %d\n", player.position.x, player.position.y);
         fclose(file);
     } else {
-        
-        printf("No se pudo abrir el archivo para guardar la posición del jugador.\n");
+        printf("No se pudo abrir el archivo o aun no se a creado.\n");
     }
 }
 void loadPlayerPosition(Character *player) {
@@ -107,8 +102,7 @@ void loadPlayerPosition(Character *player) {
         fscanf(file, "%d %d", &player->position.x, &player->position.y);
         fclose(file);
     } else {
-         printf("Error al abrir el archivo player_position.txt para carga: ");
-        printf("No se pudo abrir el archivo para cargar la posición del jugador. Estableciendo posición inicial por defecto.\n");
+        printf("Error al abrir el archivo player_position.txt para carga: ");
         player->position.x = (SCREEN_WIDTH - SPRITE_WIDTH) / 2;
         player->position.y = SCREEN_HEIGHT - SPRITE_HEIGHT - PLATFORM_HEIGHT - 10;
     }
@@ -146,22 +140,22 @@ int main(int argc, char* args[]) {
     SDL_Texture *level1 = NULL;
     SDL_Texture *level2 = NULL;
     SDL_Texture *level3 = NULL;
+    SDL_Texture* fireTexture = NULL;
     SDL_Rect spriteClips[SPRITES_PER_IMAGE * 4];
-    
     SDL_Rect standingClips[3];
     SDL_Rect atackingClips[1];
     SDL_Rect teleportZone = {0, 430, 200, 150}; 
     SDL_Rect platforms[PLATFORM_NUM];
-    Mix_Music *backgroundMusic = NULL;
-    SDL_Texture* fireTexture = NULL;
     SDL_Rect fireClips[3];
+    Mix_Music *backgroundMusic = NULL;
+    
+    
 
         int showInitialScreen = 1;
         int ShowInfo = 0;
         int PlayMusic = 1;
         int isMute = 0;      
-        int isMusicPlaying = 1; // 1 para música activada, 0 para música pausada
-
+        int isMusicPlaying = 1; 
                 
            
 
@@ -188,7 +182,6 @@ int main(int argc, char* args[]) {
                               SDL_WINDOW_SHOWN);
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
     spriteSheet1 = IMG_LoadTexture(renderer, "spritesheet1.bmp");
     spriteSheet2 = IMG_LoadTexture(renderer, "spritesheet2.bmp");
     jumpSpriteSheet = IMG_LoadTexture(renderer, "jump_spritesheet.bmp");
@@ -201,26 +194,26 @@ int main(int argc, char* args[]) {
     AtackSpriteSheet3 = IMG_LoadTexture(renderer, "atack3.bmp");
     fireTexture = IMG_LoadTexture(renderer, "fire.bmp");
     InfoImage = IMG_LoadTexture(renderer, "info_image.png");
-     topImage = IMG_LoadTexture(renderer, "top_image.png");
-        playButton = IMG_LoadTexture(renderer, "play_button.png");
-        square1 = IMG_LoadTexture(renderer, "square1.png");
-        square2 = IMG_LoadTexture(renderer, "square2.png");
-        topRightButton = IMG_LoadTexture(renderer, "top_right_button.png");
-        BackImage = IMG_LoadTexture(renderer, "background_image.jpg");
-        teleportZoneTexture = IMG_LoadTexture(renderer, "teleport_image.webp");
-        mute = IMG_LoadTexture(renderer, "mute_button.png");
-        Tutorial1 = IMG_LoadTexture(renderer,"tutorial1.png");
-        Tutorial2 = IMG_LoadTexture(renderer,"tutorial2.png");
-        Tutorial3 = IMG_LoadTexture(renderer,"tutorial3.png");
-        Tutorial4 = IMG_LoadTexture(renderer,"tutorial4.png");
-        win = IMG_LoadTexture(renderer,"win.png");
-        level1 = IMG_LoadTexture(renderer,"level1.png");
-        level2 = IMG_LoadTexture(renderer,"level2.png");
-        level3 = IMG_LoadTexture(renderer,"level3.png");
-        Character player;
+    topImage = IMG_LoadTexture(renderer, "top_image.png");
+    playButton = IMG_LoadTexture(renderer, "play_button.png");
+    square1 = IMG_LoadTexture(renderer, "square1.png");
+    square2 = IMG_LoadTexture(renderer, "square2.png");
+    topRightButton = IMG_LoadTexture(renderer, "top_right_button.png");
+    BackImage = IMG_LoadTexture(renderer, "background_image.jpg");
+    teleportZoneTexture = IMG_LoadTexture(renderer, "teleport_image.webp");
+    mute = IMG_LoadTexture(renderer, "mute_button.png");
+    Tutorial1 = IMG_LoadTexture(renderer,"tutorial1.png");
+    Tutorial2 = IMG_LoadTexture(renderer,"tutorial2.png");
+    Tutorial3 = IMG_LoadTexture(renderer,"tutorial3.png");
+    Tutorial4 = IMG_LoadTexture(renderer,"tutorial4.png");
+    win = IMG_LoadTexture(renderer,"win.png");
+    level1 = IMG_LoadTexture(renderer,"level1.png");
+    level2 = IMG_LoadTexture(renderer,"level2.png");
+    level3 = IMG_LoadTexture(renderer,"level3.png");
+    Character player;
   
 
-        if (!topImage||!playButton||!square1||!square2||!topRightButton) {
+    if (!topImage||!playButton||!square1||!square2||!topRightButton) {
         printf("Una o más texturas no se pudieron cargar.\n");
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
@@ -309,7 +302,7 @@ for (int i = 0; i < 3; ++i) {
     player.isStop = 1;
     player.isAtacking = 0;
     player.attackFrame = 0;
-     loadPlayerPosition(&player);
+    loadPlayerPosition(&player);
 
     Camera camera = {0 - (SPRITE_WIDTH / 6), 0};
 
@@ -457,49 +450,49 @@ else if (player.position.x >= TELEPORT_ZONE_X_3 - 50 && player.position.x <= TEL
                         }
                         if (!ShowInfo){
                             SDL_Rect playButtonRect = { (SCREEN_WIDTH + 100) / 2, 400, 100, 100  };
-        SDL_Rect tuneRect = { (SCREEN_WIDTH -300) / 2, 400, 100, 100  };
-        if (isMouseInsideRect(x, y, playButtonRect)) {
-            ShowInfo = 1;
-            showInitialScreen = 0;
-        }
-        if (isMouseInsideRect(x, y, tuneRect)){
-            if (isMute){
-                isMute = 0;
-                if (isMusicPlaying == 0) {
-                    Mix_ResumeMusic();
-                    isMusicPlaying = 1;
-                }
-            }
-            else {
-                isMute = 1;
-                if (isMusicPlaying == 1) {
-                    Mix_PauseMusic();
-                    isMusicPlaying = 0;
-                }
-            }}
+                            SDL_Rect tuneRect = { (SCREEN_WIDTH -300) / 2, 400, 100, 100  };
+                            if (isMouseInsideRect(x, y, playButtonRect)) {
+                            ShowInfo = 1;
+                            showInitialScreen = 0;
+                            }
+                            if (isMouseInsideRect(x, y, tuneRect)){
+                            if (isMute){
+                            isMute = 0;
+                            if (isMusicPlaying == 0) {
+                            Mix_ResumeMusic();
+                            isMusicPlaying = 1;
+                            }
+                            }
+                        else {
+                            isMute = 1;
+                        if (isMusicPlaying == 1) {
+                            Mix_PauseMusic();
+                            isMusicPlaying = 0;
                         }
-                    }else if (e.type == SDL_KEYUP) {
-                switch (e.key.keysym.sym) {
-                    case SDLK_LEFT:
-                    case SDLK_RIGHT:
-                        direction = 0;
-                        isMoving = 0;
-                        break;
-                    case SDLK_UP:
-                        if (player.isPreparingToJump) {
-                            player.isPreparingToJump = 0;
-                            player.isJumping = 1;
-                            player.jumpFrame = 0;
-                            player.velocityY = JUMP_FORCE;
+                        }}
                         }
-                        break;
-                }
-            }
-        }
+                    }   else if (e.type == SDL_KEYUP) {
+                            switch (e.key.keysym.sym) {
+                            case SDLK_LEFT:
+                            case SDLK_RIGHT:
+                                direction = 0;
+                                isMoving = 0;
+                                break;
+                            case SDLK_UP:
+                                if (player.isPreparingToJump) {
+                                    player.isPreparingToJump = 0;
+                                    player.isJumping = 1;
+                                    player.jumpFrame = 0;
+                                    player.velocityY = JUMP_FORCE;
+                                    }
+                                break;
+                                }
+                            }
+                        }
         if (player.position.y > 600){
-          player.position.x = 0;
-          player.position.y = 0;
-          player.isJumping = 1;
+            player.position.x = 0;
+            player.position.y = 0;
+            player.isJumping = 1;
           
         }
         if (!isMoving && !player.isPreparingToJump && !player.isJumping) {
@@ -562,16 +555,7 @@ else if (player.position.x >= TELEPORT_ZONE_X_3 - 50 && player.position.x <= TEL
         } else {
             currentFrame = 0;
         }
-      //  const Uint8* keystates = SDL_GetKeyboardState(NULL);
-//if (keystates[SDL_SCANCODE_X]) {
-  //  if (isMouseInsideRect(player.position.x, player.position.y, teleportZone)) {
-    //    player.position.x = 0;
-      //  player.position.y = 0;
-    //}
-//}
 
-
-       
         if (player.isOnGround) {
             int onPlatform = 0;
             for (int i = 0; i < PLATFORM_NUM; ++i) {
@@ -711,9 +695,9 @@ if (currentFireTime - animationStartTime > animationFrameTime) {
                     SDL_RenderCopy(renderer, square2, NULL, &square2Rect);
                 } else {
                     SDL_Rect topRightButtonRect = { SCREEN_WIDTH - 100, 0, 100, 100 };
-    //                SDL_Rect TeleportRect = { 0, 430, 200, 150};
+
                     SDL_RenderCopy(renderer, topRightButton, NULL, &topRightButtonRect);
-      //               SDL_RenderCopy(renderer, InfoImage, NULL, &TeleportRect);
+
                }
  if (ShowInfo) {
      SDL_Rect BackRect = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT }; 
@@ -727,10 +711,7 @@ if (currentFireTime - animationStartTime > animationFrameTime) {
  }
 
 
-    // Renderizar la nueva entidad
-   // SDL_Rect renderFireRect = {fireEntity.position.x - camera.x, fireEntity.position.y, fireEntity.position.w, fireEntity.position.h};
-   // SDL_RenderCopy(renderer, fireTexture, &fireClips[fireEntity.currentFrame], &renderFireRect);
-
+   
   
     SDL_RenderPresent(renderer);
     }
